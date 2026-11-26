@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tiến độ CPM</title>
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/print.css">
+</head>
+<body>
+<div id="app">
+  <!-- Thanh trên -->
+  <header class="topbar">
+    <div class="brand">📅 Tiến độ CPM</div>
+    <input id="pj-name" class="pj-name" title="Tên dự án" placeholder="Tên dự án">
+    <div class="tb-group">
+      <button data-act="new" title="Dự án mới">Mới</button>
+      <button data-act="open" title="Mở file dự án .json">Mở</button>
+      <button data-act="save" title="Lưu file dự án .json (Ctrl+S)" class="pri">Lưu</button>
+      <button data-act="import" title="Nhập từ Excel: dán bảng hoặc chọn file .xlsx">Nhập Excel</button>
+      <button data-act="export-xlsx" title="Xuất bảng ra Excel .xlsx">Xuất Excel</button>
+      <button data-act="print" title="In / xuất PDF Gantt + bảng">In / PDF</button>
+      <button data-act="backups" title="Các bản tự sao lưu">Sao lưu</button>
+      <button data-act="settings" title="Ngày khởi công, tuần làm việc, ngày nghỉ">⚙ Dự án</button>
+      <button data-act="help" title="Hướng dẫn">?</button>
+    </div>
+    <input type="file" id="f-open" accept=".json,application/json" hidden>
+  </header>
+
+  <!-- Thanh công cụ -->
+  <div class="toolbar">
+    <div class="tb-group">
+      <button data-act="add-task" title="Thêm việc dưới dòng chọn (Insert)">+ Việc</button>
+      <button data-act="add-ms" title="Thêm mốc">+ Mốc</button>
+      <button data-act="add-sum" title="Thêm hạng mục">+ Hạng mục</button>
+      <button data-act="del" title="Xoá dòng chọn (Ctrl+Delete)">Xoá</button>
+      <button data-act="up" title="Chuyển lên (Alt+↑)">↑</button>
+      <button data-act="down" title="Chuyển xuống (Alt+↓)">↓</button>
+      <button data-act="outdent" title="Lùi cấp (Alt+Shift+←)">⇤</button>
+      <button data-act="indent" title="Thụt cấp (Alt+Shift+→)">⇥</button>
+      <button data-act="link" title="Liên kết FS các dòng chọn theo thứ tự">🔗</button>
+      <button data-act="undo" title="Hoàn tác (Ctrl+Z)">↶</button>
+      <button data-act="redo" title="Làm lại (Ctrl+Y)">↷</button>
+    </div>
+    <div class="tb-group seg" id="flt">
+      <span class="lbl">Lọc:</span>
+      <button data-flt="all" class="on">Tất cả</button>
+      <button data-flt="week">Tuần này</button>
+      <button data-flt="late">Chậm</button>
+      <button data-flt="crit">Đường găng</button>
+      <input id="q" class="q" placeholder="Tìm tên/mã…">
+    </div>
+    <div class="tb-group seg" id="scl">
+      <span class="lbl">Gantt:</span>
+      <button data-scl="ngay">Ngày</button>
+      <button data-scl="tuan" class="on">Tuần</button>
+      <button data-scl="thang">Tháng</button>
+      <label class="chk"><input type="checkbox" id="o-links" checked> Liên kết</label>
+      <label class="chk"><input type="checkbox" id="o-float"> Dự trữ</label>
+      <label class="chk"><input type="checkbox" id="o-res"> Nguồn lực</label>
+    </div>
+    <div class="tb-group">
+      <span class="lbl">Ngày báo cáo:</span>
+      <input type="date" id="status-date" title="Ngày báo cáo — dùng tính % kế hoạch, lọc Chậm/Tuần này, ghi % hoàn thành">
+      <button data-act="baseline" title="Lưu kế hoạch hiện tại làm baseline để so lệch">Lưu baseline</button>
+      <button data-act="clear-baseline" title="Xoá baseline">Xoá BL</button>
+    </div>
+  </div>
+
+  <!-- Tóm tắt -->
+  <div class="summary" id="summary"></div>
+
+  <!-- Vùng chính -->
+  <main class="main">
+    <div class="pane-left" id="pane-left">
+      <table class="grid" id="grid">
+        <thead id="grid-head"></thead>
+        <tbody id="grid-body"></tbody>
+      </table>
+    </div>
+    <div class="splitter" id="splitter" title="Kéo để đổi độ rộng"></div>
+    <div class="pane-right" id="pane-right">
+      <div class="g-headwrap" id="g-head"></div>
+      <div class="g-bodywrap" id="g-body"></div>
+    </div>
+  </main>
+  <div class="res-pane" id="res-pane" hidden></div>
+  <div class="statusbar" id="statusbar">Dữ liệu chỉ lưu trên máy này (trình duyệt + file .json anh tự lưu). Không gửi đi đâu.</div>
+</div>
+
+<!-- ============ HỘP THOẠI ============ -->
+<dialog id="dlg-settings" class="dlg">
+  <form method="dialog">
+    <h3>Thông tin dự án</h3>
+    <label>Tên dự án <input id="s-name"></label>
+    <label>Ngày khởi công <input type="date" id="s-start" required></label>
+    <label>Tuần làm việc
+      <select id="s-ww">
+        <option value="5">5 ngày (T2–T6)</option>
+        <option value="6">6 ngày (T2–T7, nghỉ CN)</option>
+        <option value="7">7 ngày (tính ngày lịch, gồm CN &amp; lễ)</option>
+      </select>
+    </label>
+    <label>Hạn hoàn thành (tuỳ chọn) <input type="date" id="s-deadline"></label>
+    <label>Ngày nghỉ lễ (mỗi dòng 1 ngày dd/mm/yyyy hoặc yyyy-mm-dd)
+      <textarea id="s-hol" rows="6" placeholder="01/01/2027&#10;29/04/2027"></textarea>
+    </label>
+    <button type="button" id="s-hol-vn" class="small">+ Thêm lễ VN dương lịch các năm của dự án (1/1, 30/4, 1/5, 2/9)</button>
+    <p class="hint">Tết Âm lịch, Giỗ tổ: anh nhập tay theo năm. Đổi tuần làm việc sẽ tính lại toàn bộ ngày.</p>
+    <menu><button value="cancel">Huỷ</button><button value="ok" id="s-ok" class="pri">Áp dụng</button></menu>
+  </form>
+</dialog>
+
+<dialog id="dlg-import" class="dlg wide">
+  <form method="dialog" onsubmit="return false">
+    <h3>Nhập từ Excel</h3>
+    <div class="imp-src">
+      <label class="filebtn">📂 Chọn file .xlsx/.xls/.csv <input type="file" id="i-file" accept=".xlsx,.xls,.xlsm,.csv" hidden></label>
+      <span>hoặc dán bảng (Ctrl+V) vào ô dưới:</span>
+      <select id="i-sheet" hidden></select>
+    </div>
+    <textarea id="i-paste" rows="4" placeholder="Copy vùng bảng trong Excel (gồm dòng tiêu đề) rồi Ctrl+V vào đây…"></textarea>
+    <div class="imp-opts">
+      <label>Dòng tiêu đề số <input type="number" id="i-hrow" min="1" value="1" style="width:60px"></label>
+      <label>Ngày khởi công <input type="date" id="i-start"></label>
+      <label>Tuần làm việc <select id="i-ww"><option value="5">5</option><option value="6">6</option><option value="7">7</option></select> ngày</label>
+      <label><input type="radio" name="i-mode" value="replace" checked> Thay thế dự án (tự sao lưu bản cũ)</label>
+      <label><input type="radio" name="i-mode" value="append"> Nối vào cuối</label>
+    </div>
+    <h4>Ghép cột — chọn vai trò cho từng cột nguồn</h4>
+    <div class="imp-map" id="i-map"></div>
+    <h4>Xem trước <span id="i-stat"></span></h4>
+    <div class="imp-prev" id="i-prev"></div>
+    <menu><button value="cancel" formnovalidate onclick="this.closest('dialog').close()">Huỷ</button><button type="button" id="i-ok" class="pri">Nhập</button></menu>
+  </form>
+</dialog>
+
+<dialog id="dlg-constraint" class="dlg">
+  <form method="dialog">
+    <h3>Ràng buộc</h3>
+    <label>Loại <select id="c-type"></select></label>
+    <label>Ngày <input type="date" id="c-date"></label>
+    <menu><button value="cancel">Huỷ</button><button value="ok" class="pri">Áp dụng</button></menu>
+  </form>
+</dialog>
+
+<dialog id="dlg-backups" class="dlg wide">
+  <form method="dialog">
+    <h3>Bản tự sao lưu (lưu trong trình duyệt máy này)</h3>
+    <p class="hint">Tự sao lưu trước mỗi lần Mở file / Nhập thay thế / Dự án mới / Khôi phục. Giữ 20 bản gần nhất. Muốn giữ lâu dài: bấm <b>Lưu</b> ra file .json.</p>
+    <div id="b-list"></div>
+    <menu><button value="cancel">Đóng</button></menu>
+  </form>
+</dialog>
+
+<dialog id="dlg-print" class="dlg">
+  <form method="dialog">
+    <h3>In / Xuất PDF</h3>
+    <label>Khổ giấy <select id="p-size"><option value="A3">A3 ngang</option><option value="A4">A4 ngang</option></select></label>
+    <label>Thang thời gian <select id="p-scale"><option value="auto">Tự vừa khổ giấy</option><option value="tuan">Tuần</option><option value="thang">Tháng</option></select></label>
+    <label>Dòng in <select id="p-rows"><option value="view">Theo bộ lọc đang xem</option><option value="all">Tất cả</option></select></label>
+    <label><input type="checkbox" id="p-links" checked> Vẽ liên kết</label>
+    <label><input type="checkbox" id="p-bl" checked> Vẽ baseline (nếu có)</label>
+    <label>Người lập / ghi chú chân trang <input id="p-foot" placeholder="vd. Lập: CHT ..."></label>
+    <p class="hint">Trong hộp in của trình duyệt chọn “Lưu dưới dạng PDF”, lề: Không/Tối thiểu, bật “Đồ hoạ nền”.</p>
+    <menu><button value="cancel">Huỷ</button><button value="ok" class="pri">In</button></menu>
+  </form>
+</dialog>
+
+<dialog id="dlg-help" class="dlg wide">
+  <form method="dialog">
+    <h3>Hướng dẫn nhanh</h3>
+    <ul class="help">
+      <li><b>Liên kết tiền nhiệm</b>: <code>&lt;STT&gt;[FS|SS|FF|SF][+|-lag]</code>, nhiều tiền nhiệm ngăn bằng <code>;</code> hoặc <code>,</code>. Ví dụ <code>4</code>, <code>4FS+3</code>, <code>8FS+3; 6</code>, <code>2SS+1</code>, <code>5FF-2</code>. Lag theo ngày làm việc; <code>+1t</code> = 1 tuần làm việc.</li>
+      <li><b>Thời lượng</b>: số ngày làm việc; gõ <code>2t</code> (2 tuần) hoặc <code>1th</code> (1 tháng = 4 tuần) — tự quy đổi theo tuần làm việc 5/6/7 ngày.</li>
+      <li><b>Bắt đầu</b>: chỉ nhập tay cho việc không có tiền nhiệm. Việc có tiền nhiệm tự tính. Nhập <b>Kết thúc</b> → tự tính lại thời lượng.</li>
+      <li><b>Hạng mục</b>: dòng có các dòng con thụt lề (⇥). Hạng mục tự gộp ngày từ con; không liên kết vào/ra hạng mục.</li>
+      <li><b>Dự trữ</b> = LS − ES (tổng dự trữ). Dự trữ ≤ 0 → <span class="crit">găng (đỏ)</span>.</li>
+      <li><b>Theo dõi</b>: đặt Ngày báo cáo → nhập % HT (ghi lịch sử theo ngày báo cáo). “Lưu baseline” chụp kế hoạch; cột <b>Lệch BL</b> = kết thúc hiện tại − kết thúc baseline (+ trễ / − sớm, ngày làm việc). Cột <b>Chậm</b> = (% kế hoạch − % thực tế) × thời lượng.</li>
+      <li><b>Phím</b>: Enter/↑/↓ chuyển ô · Insert thêm việc · Ctrl+Delete xoá · Alt+Shift+→/← thụt/lùi cấp · Alt+↑/↓ chuyển dòng · Ctrl+Z/Y · Ctrl+S lưu · Ctrl+V (ngoài ô nhập) mở Nhập Excel.</li>
+      <li><b>Chọn dòng</b>: bấm cột STT (Shift/Ctrl để chọn nhiều).</li>
+    </ul>
+    <menu><button value="cancel">Đóng</button></menu>
+  </form>
+</dialog>
+
+<div id="print-root"></div>
+<div id="toast"></div>
+
+<script src="vendor/xlsx.full.min.js"></script>
+<script src="js/cpm.js"></script>
+<script src="js/model.js"></script>
+<script src="js/gantt.js"></script>
+<script src="js/nhap.js"></script>
+<script src="js/inan.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

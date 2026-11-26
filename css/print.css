@@ -1,0 +1,29 @@
+/* Trang in (dựng bởi js/inan.js) */
+.p-page { font-family: Arial, sans-serif; font-size: 9px; color: #000; display: flex; flex-direction: column; overflow: hidden; page-break-after: always; break-after: page; }
+.p-page:last-child { page-break-after: auto; break-after: auto; }
+.p-title { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1.5px solid #000; padding-bottom: 2px; }
+.p-title b { font-size: 13px; }
+.p-title span { font-size: 9.5px; color: #333; }
+.p-pg { text-align: right; font-size: 9px; color: #333; }
+.p-body { display: flex; align-items: flex-start; flex: 1; min-height: 0; overflow: hidden; }
+.p-tbl { border-collapse: collapse; table-layout: fixed; flex: none; }
+.p-tbl th { background: #eef1f5; border: .5px solid #999; font-size: 8.5px; padding: 0 2px; }
+.p-tbl td { border: .5px solid #bbb; padding: 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 8.5px; line-height: 1; }
+.p-tbl td.num { text-align: right; } .p-tbl td.ctr { text-align: center; }
+.p-tbl tr.sum td { font-weight: 700; background: #f3f4f6; }
+.p-tbl tr.crit td { color: #c00; }
+.p-gantt { flex: none; overflow: hidden; border: .5px solid #999; border-left: none; }
+.p-gantt svg { display: block; }
+.p-gantt .g-ht { font-size: 9px; } .p-gantt .g-hs { font-size: 8px; } .p-gantt .g-hxs { font-size: 7px; }
+.p-foot { display: flex; justify-content: space-between; align-items: center; border-top: .5px solid #999; font-size: 8.5px; }
+.lg i { display: inline-block; width: 14px; height: 7px; margin: 0 3px 0 8px; vertical-align: middle; }
+.lg-t { background: #3b82f6; } .lg-c { background: #d93025; } .lg-s { background: #374151; height: 4px !important; }
+.lg-m { background: #6d28d9; width: 7px !important; transform: rotate(45deg); }
+.lg-b { background: #9aa5b1; height: 4px !important; } .lg-st { border-left: 2px dashed #e37400; width: 2px !important; height: 10px !important; }
+
+@media print {
+  html, body { background: #fff !important; height: auto; }
+  #app, dialog, #toast { display: none !important; }
+  #print-root { display: block !important; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
